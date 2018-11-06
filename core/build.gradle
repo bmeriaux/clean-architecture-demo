@@ -1,0 +1,53 @@
+dependencies {
+    // Spring boot
+    compile("org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}")
+
+    // Utilities
+    compile("org.slf4j:slf4j-api:${slf4jApiVersion}")
+    compile("org.apache.commons:commons-lang3:${commonsLang3Version}")
+    compile("commons-io:commons-io:${commonsIoVersion}")
+
+    // Logging
+    compile("net.logstash.logback:logstash-logback-encoder:${logStashLogbackVersion}")
+    compile("ch.qos.logback:logback-core:${logbackVersion}")
+    compile("ch.qos.logback:logback-classic:${logbackVersion}")
+    compile("ch.qos.logback:logback-access:${logbackVersion}")
+
+    // Dev tools
+    compileOnly("org.springframework.boot:spring-boot-devtools:${springBootVersion}")
+
+    // Test
+    testCompile("org.springframework.boot:spring-boot-starter-test:${springBootVersion}") {
+        exclude group: "org.junit"
+    }
+    testCompile("org.assertj:assertj-core:${assertjCoreVersion}")
+    testCompile("org.junit.jupiter:junit-jupiter-api:${junit5Version}")
+    testCompile("org.mockito:mockito-junit-jupiter:${mockitoVersion}")
+    testCompile("org.mockito:mockito-core:${mockitoVersion}")
+
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junit5Version}")
+    testRuntime("org.junit.platform:junit-platform-runner:${junit5PlatformVersion}")
+    testRuntime("org.junit.platform:junit-platform-launcher:${junit5PlatformVersion}")
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+task checkCleanArchitecture(type: Exec) {
+    commandLine 'tools/check-clean-architecture.sh'
+}
+
+task testsPyramidCalculator(type: Exec) {
+    commandLine "sh", "tools/tests-pyramid-calculator.sh"
+}
+
+check.dependsOn checkCleanArchitecture
+check.dependsOn testsPyramidCalculator
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.10.2'
+}

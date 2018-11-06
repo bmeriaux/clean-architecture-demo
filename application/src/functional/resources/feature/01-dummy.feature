@@ -1,0 +1,3 @@
+Feature: dummy
+
+  Scenario: dummy

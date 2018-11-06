@@ -1,0 +1,10 @@
+server:
+  port: ${PORT:8080}
+
+flink:
+  useRestClient: true
+  defaultParallelism: 1
+  managerHost: localhost
+  managerRpcPort: 6123
+  jobJarRootPath: "target"
+  jobJarName: "job.jar"

@@ -1,0 +1,56 @@
+package com.example.demo.application.infrastructure.flink;
+
+import com.example.demo.application.domain.JobSubmitter;
+import org.apache.flink.api.common.JobSubmissionResult;
+import org.apache.flink.client.program.ClusterClient;
+import org.apache.flink.client.program.PackagedProgram;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Component
+public class FlinkJobSubmitter implements JobSubmitter {
+
+    private final Logger logger = LoggerFactory.getLogger(FlinkJobSubmitter.class);
+    private static final String JOB_ARGS_PREFIX = "job.args.";
+    private static final String JOB_NAME_KEY = "jobName";
+    private final FlinkProperties flinkProperties;
+    private final ClusterClient clusterClient;
+    private final PackagedProgramFactory packagedProgramFactory;
+
+
+    public FlinkJobSubmitter(FlinkProperties flinkProperties, ClusterClient clusterClient, PackagedProgramFactory packagedProgramFactory) {
+        this.flinkProperties = flinkProperties;
+        this.clusterClient = clusterClient;
+        this.packagedProgramFactory = packagedProgramFactory;
+    }
+
+    @Override
+    public String submitJob(String jobName, Map<String, String> jobArgs) throws Exception {
+        File jobJar = Paths.get(flinkProperties.getJobJarRootPath(), flinkProperties.getJobJarName()).toAbsolutePath().toFile();
+        jobArgs.put(JOB_NAME_KEY, jobName);
+        PackagedProgram packagedProgram = packagedProgramFactory.getInstance(jobJar, buildCliArgs(jobArgs));
+        JobSubmissionResult jobSubmissionResult = clusterClient.run(packagedProgram, flinkProperties.getDefaultParallelism());
+        Long executionTime = jobSubmissionResult.getJobExecutionResult().getNetRuntime();
+        logger.info("Job {} done in {} ms", jobName, executionTime);
+        return jobSubmissionResult.getJobID().toString();
+    }
+
+    private String[] buildCliArgs(Map<String, String> jobArgs) {
+        List<String> args = jobArgs.entrySet().stream()
+                .map(entry -> buildArgString(JOB_ARGS_PREFIX + entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        return args.toArray(new String[0]);
+    }
+
+    private String buildArgString(String key, String value) {
+        return "--" + key + "=" + value;
+    }
+}
