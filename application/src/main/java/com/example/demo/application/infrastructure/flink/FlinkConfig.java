@@ -1,7 +1,6 @@
 package com.example.demo.application.infrastructure.flink;
 
 
-import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
@@ -13,13 +12,15 @@ import org.springframework.context.annotation.Configuration;
 public class FlinkConfig {
 
     @Bean
-    public ClusterClient clusterClient(FlinkProperties flinkProperties) throws Exception {
+    public RestClusterClient clusterClient(FlinkProperties flinkProperties) throws Exception {
         org.apache.flink.configuration.Configuration config = new org.apache.flink.configuration.Configuration();
         config.setBoolean(SecurityOptions.SSL_INTERNAL_ENABLED, false);
         config.setBoolean(SecurityOptions.SSL_REST_ENABLED, false);
         config.setString(JobManagerOptions.ADDRESS, flinkProperties.getManagerHost());
         config.setInteger(JobManagerOptions.PORT, flinkProperties.getManagerRpcPort());
         config.setString(RestOptions.ADDRESS, flinkProperties.getManagerHost());
-        return new RestClusterClient<>(config, "clean-archi-demo-rest-client");
+        RestClusterClient restClusterClient = new RestClusterClient<>(config, "clean-archi-demo-rest-client");
+        restClusterClient.setDetached(true);
+        return restClusterClient;
     }
 }

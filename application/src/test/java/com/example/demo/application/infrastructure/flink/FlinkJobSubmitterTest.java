@@ -2,8 +2,9 @@ package com.example.demo.application.infrastructure.flink;
 
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.client.program.ClusterClient;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.client.program.PackagedProgram;
+import org.apache.flink.client.program.rest.RestClusterClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -31,7 +33,7 @@ class FlinkJobSubmitterTest {
     private FlinkJobSubmitter flinkJobSubmitter;
 
     @Mock
-    private ClusterClient clusterClient;
+    private RestClusterClient restClusterClient;
 
     @Mock
     private PackagedProgramFactory packagedProgramFactory;
@@ -45,8 +47,8 @@ class FlinkJobSubmitterTest {
     void setup() {
         flinkProperties = initFlinkProperties();
         flinkJobSubmitter = new FlinkJobSubmitter(flinkProperties,
-                clusterClient,
-                packagedProgramFactory);
+            restClusterClient,
+            packagedProgramFactory);
 
         jobJarFile = Paths.get(flinkProperties.getJobJarRootPath(), flinkProperties.getJobJarName()).toAbsolutePath().toFile();
     }
@@ -57,12 +59,13 @@ class FlinkJobSubmitterTest {
         Map<String, String> jobArgs = new LinkedHashMap<>();
 
         String[] cliArgs = new String[]{
-                "--job.args.jobName=WordCount"
+            "--job.args.jobName=WordCount"
         };
         Long jobDuration = 100L;
-        JobExecutionResult jobExecutionResult = new JobExecutionResult(new JobID(), jobDuration, null);
+        JobSubmissionResult jobSubmissionResult = new JobExecutionResult(new JobID(), jobDuration, null);
         given(packagedProgramFactory.getInstance(jobJarFile, cliArgs)).willReturn(packagedProgram);
-        given(clusterClient.run(packagedProgram, DEFAULT_PARALLELISM)).willReturn(jobExecutionResult);
+        given(restClusterClient.run(packagedProgram, DEFAULT_PARALLELISM)).willReturn(jobSubmissionResult);
+        given(restClusterClient.requestJobResult(jobSubmissionResult.getJobID())).willReturn(CompletableFuture.completedFuture(null));
 
         // When
         String jobId = flinkJobSubmitter.submitJob(JOB_NAME, jobArgs);
@@ -70,7 +73,7 @@ class FlinkJobSubmitterTest {
         // Then
         assertThat(jobId).isNotEmpty();
         then(packagedProgramFactory).should().getInstance(jobJarFile, cliArgs);
-        then(clusterClient).should().run(packagedProgram, DEFAULT_PARALLELISM);
+        then(restClusterClient).should().run(packagedProgram, DEFAULT_PARALLELISM);
     }
 
     private FlinkProperties initFlinkProperties() {
